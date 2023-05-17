@@ -65,11 +65,10 @@ class CanvasFrame(ctk.CTkCanvas):
 
     def __init__(self, master):
         super().__init__(master)
-        self.config()
-        self.screen = turtle.TurtleScreen(self)
+        #self.config()
         # self.screen.bgcolor('cyan')
-        self.turtle = turtle.RawTurtle(self.screen)
-        self.turtle.ht()
+        self.turtle = turtle.RawTurtle(self)
+        #self.turtle.ht()
 
 
 class IterationsFrame(ctk.CTkFrame):
@@ -116,24 +115,14 @@ class AnimationSwitch(ctk.CTkFrame):
 
 class DrawButton(ctk.CTkFrame):
 
-    def __init__(self, master):
+    def __init__(self, master, command):
         super().__init__(master)
         self.button = ctk.CTkButton(
             self,
             text="Построить",
-            font=ctk.CTkFont(size=20)
+            font=ctk.CTkFont(size=20),
+            command=command
         ).pack()
-
-
-class KochCurveConfigurationFrame(ctk.CTkFrame):
-
-    def __init__(self, master):
-        super().__init__(master)
-
-        self.iterations = IterationsFrame(self).pack(fill=ctk.BOTH)
-        self.animation_switch = AnimationSwitch(self).pack(fill=ctk.BOTH,
-                                                           pady=20)
-        self.button = DrawButton(self).pack(fill=ctk.BOTH)
 
 
 class KochCurve(ctk.CTkFrame):
@@ -143,10 +132,47 @@ class KochCurve(ctk.CTkFrame):
         self.columnconfigure(0, weight=6)
         self.columnconfigure(1, weight=1)
         self.rowconfigure(0, weight=1)
-        self.canvas = CanvasFrame(self)
+        #self.canvas = CanvasFrame(self)
+        #self.canvas.grid(column=0, row=0, sticky='wens')
+        self.canvas = tk.Canvas(self)
         self.canvas.grid(column=0, row=0, sticky='wens')
-        self.config = KochCurveConfigurationFrame(self)
+        self.turtle = turtle.RawTurtle(self.canvas)
+        self.config = ctk.CTkFrame(self)
+        self.iterations = IterationsFrame(self.config)
+        self.iterations.pack(fill=ctk.BOTH)
+        self.animation_switch = AnimationSwitch(self.config)
+        self.animation_switch.pack(fill=ctk.BOTH, pady=20)
+        self.button = DrawButton(self.config, self.draw_curve)
+        self.button.pack(fill=ctk.BOTH)
         self.config.grid(column=1, row=0, sticky="wens")
+        
+
+    def draw_curve(self):
+        pen_width = 2
+        f_len = 10
+        angle = 60
+        axiom = 'F'
+        n_iter = self.iterations.n_iters.get()
+        t = self.turtle
+        #t._tracer(0, 0)
+        t._tracer(0, 0)
+        l_sys = LSystem2D(
+            t=t,
+            axiom=axiom,
+            width=pen_width,
+            length=f_len,
+            angle=angle
+        )
+        screen = t.getscreen()
+        #screen.reset()
+        t.ht()
+        screen.setworldcoordinates(-1, -1, screen.window_width() - 1, screen.window_height() - 1)
+        l_sys.add_rules(('F', "F+F--F+F"))
+        l_sys.generate_path(n_iter)
+        print(t.pos())
+        l_sys.draw_turtle((0, 0), 0)
+
+        #self.turtle.forward(10)
 
 
 if __name__ == "__main__":

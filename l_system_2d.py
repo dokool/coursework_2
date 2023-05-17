@@ -94,51 +94,51 @@ class LSystem2D:
             self.cmd_functions[key] = func
 
     def draw_turtle(self, start_pos, start_angle):
-            # ***************
-            turtle.tracer(0, 0)  # форсажный режим для черепашки
-            self.t.up()  # черепашка воспаряет над поверхностью (чтобы не было следа)
-            self.t.setpos(start_pos)  # начальная стартовая позиция
-            self.t.seth(start_angle)  # начальный угол поворота
-            self.t.down()  # черепашка опускается на "грешную землю"
-            turtle_stack = []
-            key_list_re = "|".join(self.key_re_list)
-            # ***************
-            # for move in self.state:
-            for values in re.finditer(r"(" + key_list_re + r"|.)", self.state):
-                cmd = values.group(0)
-                args = [float(x) for x in values.groups()[1:] if x]
 
-                if 'F' in cmd:
-                    if len(args) > 0 and self.cmd_functions.get('F'):
-                        self.cmd_functions['F'](t, self.length, *args)
-                    else:
-                        self.t.fd(self.length)
-                elif 'S' in cmd:
-                    if len(args) > 0 and self.cmd_functions.get('S'):
-                        self.cmd_functions['S'](t, self.length, *args)
-                    else:
-                        self.t.up()
-                        self.t.forward(self.length)
-                        self.t.down()
-                elif '+' in cmd:
-                    if len(args) > 0 and self.cmd_functions.get('+'):
-                        self.cmd_functions['+'](t, self.angle, *args)
-                    else:
-                        self.t.left(self.angle)
-                elif '-' in cmd:
-                    if len(args) > 0 and self.cmd_functions.get('-'):
-                        self.cmd_functions['-'](t, self.angle, *args)
-                    else:
-                        self.t.right(self.angle)
-                elif "[" in cmd:
-                    turtle_stack.append((self.t.xcor(), self.t.ycor(), self.t.heading(), self.t.pensize()))
-                elif "]" in cmd:
-                    xcor, ycor, head, w = turtle_stack.pop()
-                    self.set_turtle((xcor, ycor, head))
-                    self.width = w
-                    self.t.pensize(self.width)
+        #turtle.tracer(0, 0)  # форсажный режим для черепашки
+        self.t.up()  # черепашка воспаряет над поверхностью (чтобы не было следа)
+        self.t.setpos(start_pos)  # начальная стартовая позиция
+        self.t.seth(start_angle)  # начальный угол поворота
+        self.t.down()  # черепашка опускается на "грешную землю"
+        turtle_stack = []
+        key_list_re = "|".join(self.key_re_list)
+        # ***************
+        # for move in self.state:
+        for values in re.finditer(r"(" + key_list_re + r"|.)", self.state):
+            cmd = values.group(0)
+            args = [float(x) for x in values.groups()[1:] if x]
 
-            turtle.done()        # чтобы окно не закрывалось после отрисовки
+            if 'F' in cmd:
+                if len(args) > 0 and self.cmd_functions.get('F'):
+                    self.cmd_functions['F'](t, self.length, *args)
+                else:
+                    self.t.fd(self.length)
+            elif 'S' in cmd:
+                if len(args) > 0 and self.cmd_functions.get('S'):
+                    self.cmd_functions['S'](t, self.length, *args)
+                else:
+                    self.t.up()
+                    self.t.forward(self.length)
+                    self.t.down()
+            elif '+' in cmd:
+                if len(args) > 0 and self.cmd_functions.get('+'):
+                    self.cmd_functions['+'](t, self.angle, *args)
+                else:
+                    self.t.left(self.angle)
+            elif '-' in cmd:
+                if len(args) > 0 and self.cmd_functions.get('-'):
+                    self.cmd_functions['-'](t, self.angle, *args)
+                else:
+                    self.t.right(self.angle)
+            elif "[" in cmd:
+                turtle_stack.append((self.t.xcor(), self.t.ycor(), self.t.heading(), self.t.pensize()))
+            elif "]" in cmd:
+                xcor, ycor, head, w = turtle_stack.pop()
+                self.set_turtle((xcor, ycor, head))
+                self.width = w
+                self.t.pensize(self.width)
+
+        #turtle.done()        # чтобы окно не закрывалось после отрисовки
 
 
 # # ************** чтобы окно появлялось в левом верхнем углу с размерами 1200x600

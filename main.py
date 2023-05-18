@@ -34,10 +34,6 @@ class App(ctk.CTk):
         self.option_menu.pack(side=tk.TOP, fill=tk.X, padx=20, pady=5)
         self.mainframe.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
         self.select_frame('Главная')
-        # self.canvas = CanvasFrame(self)
-        # self.canvas.pack(side=tk.LEFT)
-        # self.config = ConfigurationFrame()
-        # self.config.pack(side=tk.RIGHT)
 
     def start(self):
         self.mainloop()
@@ -61,16 +57,6 @@ class GreetingFrame(ctk.CTkFrame):
         self.greeteing_label.pack(fill=tk.BOTH, expand=True)
 
 
-class CanvasFrame(ctk.CTkCanvas):
-
-    def __init__(self, master):
-        super().__init__(master)
-        #self.config()
-        # self.screen.bgcolor('cyan')
-        self.turtle = turtle.RawTurtle(self)
-        #self.turtle.ht()
-
-
 class IterationsFrame(ctk.CTkFrame):
 
     def __init__(self, master, start=1, end=9):
@@ -89,7 +75,6 @@ class IterationsFrame(ctk.CTkFrame):
             to=end,
             variable=self.n_iters,
             number_of_steps=end-start+1,
-            # command=self.slider_event
         ).grid(column=0, row=1, ipadx=20, pady=20)
         self.slider_label = ctk.CTkEntry(
             self,
@@ -132,11 +117,10 @@ class KochCurve(ctk.CTkFrame):
         self.columnconfigure(0, weight=6)
         self.columnconfigure(1, weight=1)
         self.rowconfigure(0, weight=1)
-        #self.canvas = CanvasFrame(self)
-        #self.canvas.grid(column=0, row=0, sticky='wens')
-        self.canvas = tk.Canvas(self)
-        self.canvas.grid(column=0, row=0, sticky='wens')
+        self.canvas = tk.Canvas(self, width=900, height=600)
+        self.canvas.pack(expand=True, fill=tk.BOTH, side=tk.LEFT)
         self.turtle = turtle.RawTurtle(self.canvas)
+        self.turtle.ht()
         self.config = ctk.CTkFrame(self)
         self.iterations = IterationsFrame(self.config)
         self.iterations.pack(fill=ctk.BOTH)
@@ -144,35 +128,38 @@ class KochCurve(ctk.CTkFrame):
         self.animation_switch.pack(fill=ctk.BOTH, pady=20)
         self.button = DrawButton(self.config, self.draw_curve)
         self.button.pack(fill=ctk.BOTH)
-        self.config.grid(column=1, row=0, sticky="wens")
-        
+        self.config.pack(fill=tk.BOTH, side=tk.LEFT)
 
     def draw_curve(self):
+        screen = self.turtle.getscreen()
+        screen.setworldcoordinates(0, 0, screen.window_width() - 1,
+                                   screen.window_height() - 1)
+        self.turtle.clear()
         pen_width = 2
-        f_len = 10
         angle = 60
         axiom = 'F'
         n_iter = self.iterations.n_iters.get()
-        t = self.turtle
-        #t._tracer(0, 0)
-        t._tracer(0, 0)
+        f_len = 750 / (3 ** n_iter)
+        if self.animation_switch.variable.get():
+            self.turtle.speed(5)
+            self.turtle._delay(5)
+        else:
+            if n_iter <= 4:
+                self.turtle.speed(0)
+                self.turtle._delay(0)
+            else:
+                self.turtle._tracer(0, 10000)
+        self.turtle.ht()
         l_sys = LSystem2D(
-            t=t,
+            t=self.turtle,
             axiom=axiom,
             width=pen_width,
             length=f_len,
             angle=angle
         )
-        screen = t.getscreen()
-        #screen.reset()
-        t.ht()
-        screen.setworldcoordinates(-1, -1, screen.window_width() - 1, screen.window_height() - 1)
         l_sys.add_rules(('F', "F+F--F+F"))
         l_sys.generate_path(n_iter)
-        print(t.pos())
-        l_sys.draw_turtle((0, 0), 0)
-
-        #self.turtle.forward(10)
+        l_sys.draw_turtle((70, 20), 0)
 
 
 if __name__ == "__main__":

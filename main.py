@@ -22,7 +22,7 @@ class App(ctk.CTk):
         self.frames = {
             "Главная": GreetingFrame,
             "Кривая Коха": KochCurve,
-            "2": GreetingFrame,
+            "Дракон Хартера-Хейтуэя": HarterHatewayDragon,
         }
         self.option_menu = ctk.CTkOptionMenu(
             master=self,
@@ -57,42 +57,42 @@ class GreetingFrame(ctk.CTkFrame):
         self.greeteing_label.pack(fill=tk.BOTH, expand=True)
 
 
-class IterationsFrame(ctk.CTkFrame):
+class SliderFrame(ctk.CTkFrame):
 
-    def __init__(self, master, start=1, end=9):
+    def __init__(self, master, start=1, end=9, text='Итераций:'):
         super().__init__(master)
         self.columnconfigure(0, weight=4)
         self.columnconfigure(1, weight=1)
-        self.n_iters = ctk.IntVar(self, 1)
+        self.variable = ctk.IntVar(self, start)
         self.iterations_label = ctk.CTkLabel(
             self,
-            text='Итераций:',
+            text=text,
             font=ctk.CTkFont(size=20)
         ).grid(column=0, row=0, columnspan=2, pady=20)
-        self.iterations_slider = ctk.CTkSlider(
+        self.slider = ctk.CTkSlider(
             self,
             from_=start,
             to=end,
-            variable=self.n_iters,
+            variable=self.variable,
             number_of_steps=end-start+1,
         ).grid(column=0, row=1, ipadx=20, pady=20)
-        self.slider_label = ctk.CTkEntry(
+        self.label = ctk.CTkEntry(
             self,
-            textvariable=self.n_iters,
+            textvariable=self.variable,
             font=ctk.CTkFont(size=20),
             state=ctk.DISABLED,
             width=40
         ).grid(column=1, row=1)
 
 
-class AnimationSwitch(ctk.CTkFrame):
+class Switch(ctk.CTkFrame):
 
-    def __init__(self, master):
+    def __init__(self, master, text):
         super().__init__(master)
-        self.variable = ctk.BooleanVar(self, value=True)
-        self.animation = ctk.CTkSwitch(
+        self.variable = ctk.BooleanVar(self, value=False)
+        self.switch = ctk.CTkSwitch(
             self,
-            text='Анимация',
+            text=text,
             font=ctk.CTkFont(size=20),
             variable=self.variable
         ).pack()
@@ -110,7 +110,7 @@ class DrawButton(ctk.CTkFrame):
         ).pack()
 
 
-class KochCurve(ctk.CTkFrame):
+class LSystem2DMainClass(ctk.CTkFrame):
 
     def __init__(self, master):
         super().__init__(master)
@@ -122,11 +122,24 @@ class KochCurve(ctk.CTkFrame):
         self.turtle = turtle.RawTurtle(self.canvas)
         self.turtle.ht()
         self.config = ctk.CTkFrame(self)
-        self.iterations = IterationsFrame(self.config)
-        self.iterations.pack(fill=ctk.BOTH)
-        self.animation_switch = AnimationSwitch(self.config)
-        self.animation_switch.pack(fill=ctk.BOTH, pady=20)
+        self.animation_switch = Switch(self.config, "Анимация")
         self.button = DrawButton(self.config, self.draw_curve)
+
+    def draw_curve(self):
+        raise NotImplementedError
+
+
+class KochCurve(LSystem2DMainClass):
+
+    def __init__(self, master):
+        super().__init__(master)
+        self.iterations = SliderFrame(self.config)
+        self.snowflake_switch = Switch(self.config, "Снежинка Коха")
+        self.angle = SliderFrame(self.config, start=60, end=90, text='Угол')
+        self.iterations.pack(fill=ctk.BOTH)
+        self.angle.pack(fill=ctk.BOTH, pady=20)
+        self.animation_switch.pack(fill=ctk.BOTH, pady=20)
+        self.snowflake_switch.pack(fill=ctk.BOTH, pady=20)
         self.button.pack(fill=ctk.BOTH)
         self.config.pack(fill=tk.BOTH, side=tk.LEFT)
 
@@ -136,19 +149,27 @@ class KochCurve(ctk.CTkFrame):
                                    screen.window_height() - 1)
         self.turtle.clear()
         pen_width = 2
-        angle = 60
-        axiom = 'F'
-        n_iter = self.iterations.n_iters.get()
-        f_len = 750 / (3 ** n_iter)
+        n_iter = self.iterations.variable.get()
+        if self.snowflake_switch.variable.get():
+            axiom = 'F--F--F'
+            start_pos = (250, 380)
+            f_len = 420 / (3 ** n_iter)
+            angle = 60
+            self.angle.variable.set(60)
+        else:
+            axiom = "F"
+            start_pos = (70, 20)
+            angle = self.angle.variable.get()
+            n = np.sqrt(2 - 2 * np.cos(np.deg2rad(2 * (90 - angle))))
+            f_len = 750 / ((2 + n) ** n_iter)
         if self.animation_switch.variable.get():
-            self.turtle.speed(5)
-            self.turtle._delay(5)
+            screen.tracer(5, 0)
         else:
             if n_iter <= 4:
-                self.turtle.speed(0)
-                self.turtle._delay(0)
+                screen.tracer(10, 10)
             else:
-                self.turtle._tracer(0, 10000)
+                screen.tracer(0, 0)
+                #self.turtle._tracer(0, 0)
         self.turtle.ht()
         l_sys = LSystem2D(
             t=self.turtle,
@@ -159,7 +180,52 @@ class KochCurve(ctk.CTkFrame):
         )
         l_sys.add_rules(('F', "F+F--F+F"))
         l_sys.generate_path(n_iter)
-        l_sys.draw_turtle((70, 20), 0)
+        l_sys.draw_turtle(start_pos, 0)
+        screen.update()
+
+
+class HarterHatewayDragon(LSystem2DMainClass):
+
+    def __init__(self, master):
+        super().__init__(master)
+        self.iterations = SliderFrame(self.config, end=15)
+        self.iterations.pack(fill=ctk.BOTH)
+        self.animation_switch.pack(fill=ctk.BOTH, pady=20)
+        self.button.pack(fill=ctk.BOTH)
+        self.config.pack(fill=tk.BOTH, side=tk.LEFT)
+
+    def draw_curve(self):
+        screen = self.turtle.getscreen()
+        screen.setworldcoordinates(0, 0, screen.window_width() - 1,
+                                   screen.window_height() - 1)
+        self.turtle.clear()
+        pen_width = 2
+        angle = 90
+        axiom = 'FX'
+        n_iter = self.iterations.variable.get()
+        #ls = [0, 0.125, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        f_len = 10
+        start_pos = (700, 100)
+        if self.animation_switch.variable.get():
+            screen.tracer(5, 5)
+        else:
+            if n_iter <= 4:
+                screen.tracer(10, 0)
+            else:
+                self.turtle._tracer(0, 0)
+        self.turtle.ht()
+        l_sys = LSystem2D(
+            t=self.turtle,
+            axiom=axiom,
+            width=pen_width,
+            length=f_len,
+            angle=angle
+        )
+        l_sys.add_rules(('FX', "FX+FY+"),
+                        ('FY', "-FX-FY"))
+        l_sys.generate_path(n_iter)
+        l_sys.draw_turtle(start_pos, 0)
+        screen.update()
 
 
 if __name__ == "__main__":

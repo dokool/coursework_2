@@ -23,13 +23,18 @@ class App(ctk.CTk):
             "Главная": GreetingFrame,
             "Кривая Коха": KochCurve,
             "Дракон Хартера-Хейтуэя": HarterHatewayDragon,
+            "Треугольник Серпинского": SierpinskiTriangle,
+            "Кривая Гильберта": HilbertCurve,
+            "Трава": Grass,
+            "Куст": Bush,
         }
         self.option_menu = ctk.CTkOptionMenu(
             master=self,
             values=list(self.frames.keys()),
             command=self.select_frame,
             anchor='center',
-            font=ctk.CTkFont(size=20)
+            font=ctk.CTkFont(size=20),
+            dropdown_font=ctk.CTkFont(size=15)
         )
         self.option_menu.pack(side=tk.TOP, fill=tk.X, padx=20, pady=5)
         self.mainframe.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
@@ -75,7 +80,7 @@ class SliderFrame(ctk.CTkFrame):
             to=end,
             variable=self.variable,
             number_of_steps=end-start+1,
-        ).grid(column=0, row=1, ipadx=20, pady=20)
+        ).grid(column=0, row=1, pady=20, padx=20)
         self.label = ctk.CTkEntry(
             self,
             textvariable=self.variable,
@@ -107,7 +112,14 @@ class DrawButton(ctk.CTkFrame):
             text="Построить",
             font=ctk.CTkFont(size=20),
             command=command
-        ).pack()
+        )
+        self.button.pack()
+
+    def switch(self):
+        if self.button._state == ctk.NORMAL:
+            self.button._state = ctk.DISABLED
+        else:
+            self.button._state = ctk.NORMAL
 
 
 class LSystem2DMainClass(ctk.CTkFrame):
@@ -123,10 +135,37 @@ class LSystem2DMainClass(ctk.CTkFrame):
         self.turtle.ht()
         self.config = ctk.CTkFrame(self)
         self.animation_switch = Switch(self.config, "Анимация")
-        self.button = DrawButton(self.config, self.draw_curve)
+        self.button = DrawButton(self.config, self._wrapper)
 
     def draw_curve(self):
         raise NotImplementedError
+
+    def _wrapper(self):
+        # self.button.switch()
+        screen = self.turtle.getscreen()
+        screen.setworldcoordinates(0, 0, screen.window_width() - 1,
+                                   screen.window_height() - 1)
+        self.turtle.clear()
+        pen_width = 2
+        self.n_iter = self.iterations.variable.get()
+        self.draw_curve()
+        if self.animation_switch.variable.get():
+            screen.tracer(1, 1)
+        else:
+            screen.tracer(0, 0)
+        self.turtle.ht()
+        l_sys = LSystem2D(
+            t=self.turtle,
+            axiom=self.axiom,
+            width=pen_width,
+            length=self.f_len,
+            angle=self.angle
+        )
+        l_sys.add_rules(*self.rules)
+        l_sys.generate_path(self.n_iter)
+        l_sys.draw_turtle(self.start_pos, self.start_angle)
+        screen.update()
+        # self.button.switch()
 
 
 class KochCurve(LSystem2DMainClass):
@@ -135,53 +174,30 @@ class KochCurve(LSystem2DMainClass):
         super().__init__(master)
         self.iterations = SliderFrame(self.config)
         self.snowflake_switch = Switch(self.config, "Снежинка Коха")
-        self.angle = SliderFrame(self.config, start=60, end=90, text='Угол')
+        self.angle_frame = SliderFrame(self.config, start=60,
+                                       end=90, text='Угол')
         self.iterations.pack(fill=ctk.BOTH)
-        self.angle.pack(fill=ctk.BOTH, pady=20)
+        self.angle_frame.pack(fill=ctk.BOTH, pady=20)
         self.animation_switch.pack(fill=ctk.BOTH, pady=20)
         self.snowflake_switch.pack(fill=ctk.BOTH, pady=20)
         self.button.pack(fill=ctk.BOTH)
         self.config.pack(fill=tk.BOTH, side=tk.LEFT)
 
     def draw_curve(self):
-        screen = self.turtle.getscreen()
-        screen.setworldcoordinates(0, 0, screen.window_width() - 1,
-                                   screen.window_height() - 1)
-        self.turtle.clear()
-        pen_width = 2
-        n_iter = self.iterations.variable.get()
+        self.start_angle = 0
+        self.rules = [('F', "F+F--F+F")]
         if self.snowflake_switch.variable.get():
-            axiom = 'F--F--F'
-            start_pos = (250, 380)
-            f_len = 420 / (3 ** n_iter)
-            angle = 60
-            self.angle.variable.set(60)
+            self.axiom = 'F--F--F'
+            self.start_pos = (250, 380)
+            self.f_len = 420 / (3 ** self.n_iter)
+            self.angle = 60
+            self.angle_frame.variable.set(60)
         else:
-            axiom = "F"
-            start_pos = (70, 20)
-            angle = self.angle.variable.get()
-            n = np.sqrt(2 - 2 * np.cos(np.deg2rad(2 * (90 - angle))))
-            f_len = 750 / ((2 + n) ** n_iter)
-        if self.animation_switch.variable.get():
-            screen.tracer(5, 0)
-        else:
-            if n_iter <= 4:
-                screen.tracer(10, 10)
-            else:
-                screen.tracer(0, 0)
-                #self.turtle._tracer(0, 0)
-        self.turtle.ht()
-        l_sys = LSystem2D(
-            t=self.turtle,
-            axiom=axiom,
-            width=pen_width,
-            length=f_len,
-            angle=angle
-        )
-        l_sys.add_rules(('F', "F+F--F+F"))
-        l_sys.generate_path(n_iter)
-        l_sys.draw_turtle(start_pos, 0)
-        screen.update()
+            self.axiom = "F"
+            self.start_pos = (70, 20)
+            self.angle = self.angle_frame.variable.get()
+            n = np.sqrt(2 - 2 * np.cos(np.deg2rad(2 * (90 - self.angle))))
+            self.f_len = 750 / ((2 + n) ** self.n_iter)
 
 
 class HarterHatewayDragon(LSystem2DMainClass):
@@ -195,37 +211,98 @@ class HarterHatewayDragon(LSystem2DMainClass):
         self.config.pack(fill=tk.BOTH, side=tk.LEFT)
 
     def draw_curve(self):
-        screen = self.turtle.getscreen()
-        screen.setworldcoordinates(0, 0, screen.window_width() - 1,
-                                   screen.window_height() - 1)
-        self.turtle.clear()
-        pen_width = 2
-        angle = 90
-        axiom = 'FX'
-        n_iter = self.iterations.variable.get()
-        #ls = [0, 0.125, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        f_len = 10
-        start_pos = (700, 100)
-        if self.animation_switch.variable.get():
-            screen.tracer(5, 5)
-        else:
-            if n_iter <= 4:
-                screen.tracer(10, 0)
-            else:
-                self.turtle._tracer(0, 0)
-        self.turtle.ht()
-        l_sys = LSystem2D(
-            t=self.turtle,
-            axiom=axiom,
-            width=pen_width,
-            length=f_len,
-            angle=angle
-        )
-        l_sys.add_rules(('FX', "FX+FY+"),
-                        ('FY', "-FX-FY"))
-        l_sys.generate_path(n_iter)
-        l_sys.draw_turtle(start_pos, 0)
-        screen.update()
+
+        self.angle = 90
+        self.start_angle = 0
+        self.rules = [('FX', "FX+FY+"),
+                      ('FY', "-FX-FY")]
+        self.axiom = 'FX'
+        self.f_len = 10
+        self.start_pos = (700, 100)
+
+
+class SierpinskiTriangle(LSystem2DMainClass):
+
+    def __init__(self, master):
+        super().__init__(master)
+        self.iterations = SliderFrame(self.config, end=9)
+        self.iterations.pack(fill=ctk.BOTH)
+        self.animation_switch.pack(fill=ctk.BOTH, pady=20)
+        self.button.pack(fill=ctk.BOTH)
+        self.config.pack(fill=tk.BOTH, side=tk.LEFT)
+
+    def draw_curve(self):
+        self.angle = 60
+        self.start_angle = 180
+        self.axiom = 'FXF--FF--FF'
+        self.f_len = 280 / (2 ** self.n_iter)
+        self.start_pos = (750, 10)
+        self.rules = [('F', "FF"),
+                      ('X', "--FXF++FXF++FXF--")]
+
+
+class HilbertCurve(LSystem2DMainClass):
+
+    def __init__(self, master):
+        super().__init__(master)
+        self.iterations = SliderFrame(self.config, end=8)
+        self.iterations.pack(fill=ctk.BOTH)
+        self.animation_switch.pack(fill=ctk.BOTH, pady=20)
+        self.button.pack(fill=ctk.BOTH)
+        self.config.pack(fill=tk.BOTH, side=tk.LEFT)
+
+    def draw_curve(self):
+        self.angle = 90
+        self.start_angle = 90
+        self.start_pos = (225, 10)
+        self.axiom = 'X'
+        self.f_len = 500 / (2 ** self.n_iter - 1)
+        self.rules = [('X', "-YF+XFX+FY-"),
+                      ('Y', "+XF-YFY-FX+")]
+
+
+class Grass(LSystem2DMainClass):
+
+    def __init__(self, master):
+        super().__init__(master)
+        self.iterations = SliderFrame(self.config, end=6)
+        self.angle_frame = SliderFrame(self.config, start=10,
+                                       end=50, text='Угол')
+        self.iterations.pack(fill=ctk.BOTH)
+        self.angle_frame.pack(fill=ctk.BOTH, pady=20)
+        self.animation_switch.pack(fill=ctk.BOTH, pady=20)
+        self.button.pack(fill=ctk.BOTH)
+        self.config.pack(fill=tk.BOTH, side=tk.LEFT)
+
+    def draw_curve(self):
+        self.angle = self.angle_frame.variable.get()
+        self.start_angle = 90
+        self.start_pos = (475, 30)
+        self.axiom = 'F'
+        self.f_len = 450 / (3 ** self.n_iter)
+        self.rules = [('F', "F[+F]F[-F]F")]
+
+
+class Bush(LSystem2DMainClass):
+
+    def __init__(self, master):
+        super().__init__(master)
+        self.iterations = SliderFrame(self.config, end=6)
+        self.angle_frame = SliderFrame(self.config, start=10,
+                                       end=50, text='Угол')
+        self.iterations.pack(fill=ctk.BOTH)
+        self.angle_frame.pack(fill=ctk.BOTH, pady=20)
+        self.animation_switch.pack(fill=ctk.BOTH, pady=20)
+        self.button.pack(fill=ctk.BOTH)
+        self.config.pack(fill=tk.BOTH, side=tk.LEFT)
+
+    def draw_curve(self):
+        self.angle = self.angle_frame.variable.get()
+        self.start_angle = 90
+        self.start_pos = (475, 10)
+        self.axiom = 'F'
+        self.f_len = 315 / (1.5 * 2.28 ** self.n_iter)
+        self.rules = [('F', "FF-[-F+F+F]+[+F-F-F]")]
 
 
 if __name__ == "__main__":

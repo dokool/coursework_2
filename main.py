@@ -23,16 +23,34 @@ class App(ctk.CTk):
         self.frames = {
             "Главная": GreetingFrame(self),
             "Кривая Коха": KochCurve(self),
-            "Дракон Хартера-Хейтуэя": DefaultLSystem2DClass(self, 90, 0, [('FX', "FX+FY+"), ('FY', "-FX-FY")], "FX", "7", "(700, 200)", 12),
-            "Треугольник Серпинского": DefaultLSystem2DClass(self, 60, 180, [('F', "FF"), ('X', "--FXF++FXF++FXF--")], 'FXF--FF--FF', "280 / (2 ** self.n_iter)", "(750, 10)", 9),
-            "Кривая Гильберта": DefaultLSystem2DClass(self, 90, 90, [('X', "-YF+XFX+FY-"), ('Y', "+XF-YFY-FX+")], 'X', "500 / (2 ** self.n_iter - 1)", "(225, 10)", 7),
-            "Трава": DefaultLSystem2DClass(self, 10, 90, [('F', "F[+F]F[-F]F")], "F", "450 / (3 ** self.n_iter)", "(475, 30)", 6, True, 10, 50),
-            "Куст": DefaultLSystem2DClass(self, 0, 90, [('F', "FF-[-F+F+F]+[+F-F-F]")], "F", "315 / (1.5 * 2.28 ** self.n_iter)", "(475, 10)", 6, True, 10, 50),
+            "Дракон Хартера-Хейтуэя": DefaultLSystem2DClass(
+                self, 90, 0, [('FX', "FX+FY+"), ('FY', "-FX-FY")],
+                "FX", "7", "(700, 200)", 12),
+            "Треугольник Серпинского": DefaultLSystem2DClass(
+                self, 60, 180, [('F', "FF"), ('X', "--FXF++FXF++FXF--")],
+                'FXF--FF--FF', "280 / (2 ** self.n_iter)", "(750, 10)", 9),
+            "Кривая Гильберта": DefaultLSystem2DClass(
+                self, 90, 90, [('X', "-YF+XFX+FY-"), ('Y', "+XF-YFY-FX+")],
+                'X', "500 / (2 ** self.n_iter - 1)", "(225, 10)", 7),
+            "Трава": DefaultLSystem2DClass(
+                self, 10, 90, [('F', "F[+F]F[-F]F")], "F",
+                "450 / (3 ** self.n_iter)", "(475, 30)", 6, True, 10, 50),
+            "Куст": DefaultLSystem2DClass(
+                self, 0, 90, [('F', "FF-[-F+F+F]+[+F-F-F]")], "F",
+                "315 / (1.5 * 2.28 ** self.n_iter)", "(475, 10)",
+                6, True, 10, 50),
             "Дерево": Tree(self),
             "Квадратичная кривая Коха": DefaultLSystem2DClass(
                 self, 90, 0, [("F", "F-F+F+FFF-F-F+F")], 'F+F+F+F',
-                "500 / (2 * 4 ** self.n_iter - 1)", "(350 + self.n_iter * 30, 80)",
-            ),
+                "500 / (2 * 4 ** self.n_iter - 1)",
+                "(350 + self.n_iter * 30, 80)"),
+            "Кристал": DefaultLSystem2DClass(
+                self, 90, 0, [("F", "FF+F++F+F")],
+                "F+F+F+F", "495 / 3 ** self.n_iter", "(240, 10)", 6),
+            "Кольцо": DefaultLSystem2DClass(
+                self, 90, 0, [("F", "FF+F+F+F+F+F-F")],
+                "F+F+F+F", "350 / 3.2 ** self.n_iter",
+                "(330 + self.n_iter * 60, 15 * self.n_iter)", 4)
         }
         self.option_menu = ctk.CTkOptionMenu(
             master=self,
@@ -180,7 +198,9 @@ class LSystem2DMainClass(ctk.CTkFrame):
 
 class DefaultLSystem2DClass(LSystem2DMainClass):
 
-    def __init__(self, master, angle, start_angle, rules, axiom, f_len, start_pos, iterations: int = 5, angle_slider: bool = 0, angle_start: int = 0, angle_end: int = 180):
+    def __init__(self, master, angle, start_angle, rules, axiom, f_len,
+                 start_pos, iterations: int = 5, angle_slider: bool = 0,
+                 angle_start: int = 0, angle_end: int = 180):
         super().__init__(master)
         self.iterations = SliderFrame(self.config, end=iterations)
         self.iterations.pack(fill=ctk.BOTH)

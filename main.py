@@ -21,14 +21,18 @@ class App(ctk.CTk):
 
         self.mainframe = ctk.CTkFrame(self)
         self.frames = {
-            "Главная": GreetingFrame,
-            "Кривая Коха": KochCurve,
-            "Дракон Хартера-Хейтуэя": HarterHatewayDragon,
-            "Треугольник Серпинского": SierpinskiTriangle,
-            "Кривая Гильберта": HilbertCurve,
-            "Трава": Grass,
-            "Куст": Bush,
-            "Дерево": Tree,
+            "Главная": GreetingFrame(self),
+            "Кривая Коха": KochCurve(self),
+            "Дракон Хартера-Хейтуэя": DefaultLSystem2DClass(self, 90, 0, [('FX', "FX+FY+"), ('FY', "-FX-FY")], "FX", "7", "(700, 200)", 12),
+            "Треугольник Серпинского": DefaultLSystem2DClass(self, 60, 180, [('F', "FF"), ('X', "--FXF++FXF++FXF--")], 'FXF--FF--FF', "280 / (2 ** self.n_iter)", "(750, 10)", 9),
+            "Кривая Гильберта": DefaultLSystem2DClass(self, 90, 90, [('X', "-YF+XFX+FY-"), ('Y', "+XF-YFY-FX+")], 'X', "500 / (2 ** self.n_iter - 1)", "(225, 10)", 7),
+            "Трава": DefaultLSystem2DClass(self, 10, 90, [('F', "F[+F]F[-F]F")], "F", "450 / (3 ** self.n_iter)", "(475, 30)", 6, True, 10, 50),
+            "Куст": DefaultLSystem2DClass(self, 0, 90, [('F', "FF-[-F+F+F]+[+F-F-F]")], "F", "315 / (1.5 * 2.28 ** self.n_iter)", "(475, 10)", 6, True, 10, 50),
+            "Дерево": Tree(self),
+            "Квадратичная кривая Коха": DefaultLSystem2DClass(
+                self, 90, 0, [("F", "F-F+F+FFF-F-F+F")], 'F+F+F+F',
+                "500 / (2 * 4 ** self.n_iter - 1)", "(350 + self.n_iter * 30, 80)",
+            ),
         }
         self.option_menu = ctk.CTkOptionMenu(
             master=self,
@@ -46,8 +50,9 @@ class App(ctk.CTk):
         self.mainloop()
 
     def select_frame(self, choice):
-        self.mainframe.destroy()
-        self.mainframe = self.frames[choice](self)
+        self.mainframe.forget()
+        self.mainframe = self.frames[choice]
+        self.mainframe.tkraise()
         self.mainframe.pack(expand=True, fill=tk.BOTH)
 
 
@@ -173,6 +178,37 @@ class LSystem2DMainClass(ctk.CTkFrame):
         # self.button.switch()
 
 
+class DefaultLSystem2DClass(LSystem2DMainClass):
+
+    def __init__(self, master, angle, start_angle, rules, axiom, f_len, start_pos, iterations: int = 5, angle_slider: bool = 0, angle_start: int = 0, angle_end: int = 180):
+        super().__init__(master)
+        self.iterations = SliderFrame(self.config, end=iterations)
+        self.iterations.pack(fill=ctk.BOTH)
+        if angle_slider:
+            self.angle_frame = SliderFrame(self.config, start=10,
+                                           end=50, text='Угол')
+            self.angle_frame.pack(fill=ctk.BOTH, pady=20)
+        self.animation_switch.pack(fill=ctk.BOTH, pady=20)
+        self.button.pack(fill=ctk.BOTH)
+        self.config.pack(fill=tk.BOTH, side=tk.LEFT)
+
+        self.angle_slider = angle_slider
+        self.angle_ = angle
+        self.start_angle = start_angle
+        self.rules = rules
+        self.axiom = axiom
+        self.f_len_ = f_len
+        self.start_pos_ = start_pos
+
+    def draw_curve(self):
+        if self.angle_slider:
+            self.angle = self.angle_frame.variable.get()
+        else:
+            self.angle = self.angle_
+        self.f_len = eval(self.f_len_)
+        self.start_pos = eval(self.start_pos_)
+
+
 class KochCurve(LSystem2DMainClass):
 
     def __init__(self, master):
@@ -203,111 +239,6 @@ class KochCurve(LSystem2DMainClass):
             self.angle = self.angle_frame.variable.get()
             n = np.sqrt(2 - 2 * np.cos(np.deg2rad(2 * (90 - self.angle))))
             self.f_len = 750 / ((2 + n) ** self.n_iter)
-
-
-class HarterHatewayDragon(LSystem2DMainClass):
-
-    def __init__(self, master):
-        super().__init__(master)
-        self.iterations = SliderFrame(self.config, end=15)
-        self.iterations.pack(fill=ctk.BOTH)
-        self.animation_switch.pack(fill=ctk.BOTH, pady=20)
-        self.button.pack(fill=ctk.BOTH)
-        self.config.pack(fill=tk.BOTH, side=tk.LEFT)
-
-    def draw_curve(self):
-
-        self.angle = 90
-        self.start_angle = 0
-        self.rules = [('FX', "FX+FY+"),
-                      ('FY', "-FX-FY")]
-        self.axiom = 'FX'
-        self.f_len = 10
-        self.start_pos = (700, 100)
-
-
-class SierpinskiTriangle(LSystem2DMainClass):
-
-    def __init__(self, master):
-        super().__init__(master)
-        self.iterations = SliderFrame(self.config, end=9)
-        self.iterations.pack(fill=ctk.BOTH)
-        self.animation_switch.pack(fill=ctk.BOTH, pady=20)
-        self.button.pack(fill=ctk.BOTH)
-        self.config.pack(fill=tk.BOTH, side=tk.LEFT)
-
-    def draw_curve(self):
-        self.angle = 60
-        self.start_angle = 180
-        self.axiom = 'FXF--FF--FF'
-        self.f_len = 280 / (2 ** self.n_iter)
-        self.start_pos = (750, 10)
-        self.rules = [('F', "FF"),
-                      ('X', "--FXF++FXF++FXF--")]
-
-
-class HilbertCurve(LSystem2DMainClass):
-
-    def __init__(self, master):
-        super().__init__(master)
-        self.iterations = SliderFrame(self.config, end=8)
-        self.iterations.pack(fill=ctk.BOTH)
-        self.animation_switch.pack(fill=ctk.BOTH, pady=20)
-        self.button.pack(fill=ctk.BOTH)
-        self.config.pack(fill=tk.BOTH, side=tk.LEFT)
-
-    def draw_curve(self):
-        self.angle = 90
-        self.start_angle = 90
-        self.start_pos = (225, 10)
-        self.axiom = 'X'
-        self.f_len = 500 / (2 ** self.n_iter - 1)
-        self.rules = [('X', "-YF+XFX+FY-"),
-                      ('Y', "+XF-YFY-FX+")]
-
-
-class Grass(LSystem2DMainClass):
-
-    def __init__(self, master):
-        super().__init__(master)
-        self.iterations = SliderFrame(self.config, end=5)
-        self.angle_frame = SliderFrame(self.config, start=10,
-                                       end=50, text='Угол')
-        self.iterations.pack(fill=ctk.BOTH)
-        self.angle_frame.pack(fill=ctk.BOTH, pady=20)
-        self.animation_switch.pack(fill=ctk.BOTH, pady=20)
-        self.button.pack(fill=ctk.BOTH)
-        self.config.pack(fill=tk.BOTH, side=tk.LEFT)
-
-    def draw_curve(self):
-        self.angle = self.angle_frame.variable.get()
-        self.start_angle = 90
-        self.start_pos = (475, 30)
-        self.axiom = 'F'
-        self.f_len = 450 / (3 ** self.n_iter)
-        self.rules = [('F', "F[+F]F[-F]F")]
-
-
-class Bush(LSystem2DMainClass):
-
-    def __init__(self, master):
-        super().__init__(master)
-        self.iterations = SliderFrame(self.config, end=5)
-        self.angle_frame = SliderFrame(self.config, start=10,
-                                       end=50, text='Угол')
-        self.iterations.pack(fill=ctk.BOTH)
-        self.angle_frame.pack(fill=ctk.BOTH, pady=20)
-        self.animation_switch.pack(fill=ctk.BOTH, pady=20)
-        self.button.pack(fill=ctk.BOTH)
-        self.config.pack(fill=tk.BOTH, side=tk.LEFT)
-
-    def draw_curve(self):
-        self.angle = self.angle_frame.variable.get()
-        self.start_angle = 90
-        self.start_pos = (475, 10)
-        self.axiom = 'F'
-        self.f_len = 315 / (1.5 * 2.28 ** self.n_iter)
-        self.rules = [('F', "FF-[-F+F+F]+[+F-F-F]")]
 
 
 class Tree(LSystem2DMainClass):

@@ -1,5 +1,6 @@
 import tkinter as tk
 import turtle
+import random
 from l_system_2d import LSystem2D
 import numpy as np
 import matplotlib.pyplot as plt
@@ -27,6 +28,7 @@ class App(ctk.CTk):
             "Кривая Гильберта": HilbertCurve,
             "Трава": Grass,
             "Куст": Bush,
+            "Дерево": Tree,
         }
         self.option_menu = ctk.CTkOptionMenu(
             master=self,
@@ -148,6 +150,7 @@ class LSystem2DMainClass(ctk.CTkFrame):
         self.turtle.clear()
         pen_width = 2
         self.n_iter = self.iterations.variable.get()
+        self.rules_move = []
         self.draw_curve()
         if self.animation_switch.variable.get():
             screen.tracer(1, 1)
@@ -162,6 +165,8 @@ class LSystem2DMainClass(ctk.CTkFrame):
             angle=self.angle
         )
         l_sys.add_rules(*self.rules)
+        if self.rules_move:
+            l_sys.add_rules_move(*self.rules_move)
         l_sys.generate_path(self.n_iter)
         l_sys.draw_turtle(self.start_pos, self.start_angle)
         screen.update()
@@ -265,7 +270,7 @@ class Grass(LSystem2DMainClass):
 
     def __init__(self, master):
         super().__init__(master)
-        self.iterations = SliderFrame(self.config, end=6)
+        self.iterations = SliderFrame(self.config, end=5)
         self.angle_frame = SliderFrame(self.config, start=10,
                                        end=50, text='Угол')
         self.iterations.pack(fill=ctk.BOTH)
@@ -287,7 +292,7 @@ class Bush(LSystem2DMainClass):
 
     def __init__(self, master):
         super().__init__(master)
-        self.iterations = SliderFrame(self.config, end=6)
+        self.iterations = SliderFrame(self.config, end=5)
         self.angle_frame = SliderFrame(self.config, start=10,
                                        end=50, text='Угол')
         self.iterations.pack(fill=ctk.BOTH)
@@ -303,6 +308,71 @@ class Bush(LSystem2DMainClass):
         self.axiom = 'F'
         self.f_len = 315 / (1.5 * 2.28 ** self.n_iter)
         self.rules = [('F', "FF-[-F+F+F]+[+F-F-F]")]
+
+
+class Tree(LSystem2DMainClass):
+
+    def __init__(self, master):
+        super().__init__(master)
+        self.iterations = SliderFrame(self.config, end=10)
+        self.leaf_slider = SliderFrame(self.config, start=0,
+                                       end=10, text='Листья')
+        self.iterations.pack(fill=ctk.BOTH)
+        self.leaf_slider.pack(fill=ctk.BOTH, pady=20)
+        self.animation_switch.pack(fill=ctk.BOTH, pady=20)
+        self.button.pack(fill=ctk.BOTH)
+        self.config.pack(fill=tk.BOTH, side=tk.LEFT)
+
+    def draw_curve(self):
+        self.start_pos = (450, 10)
+        self.start_angle = 90
+        self.f_len = 20
+        self.angle = 20
+        self.axiom = "A"
+        self.rules = [
+            ("A", f"F(1, 1)[+({self.angle})A][-({self.angle})A]", 0.5),
+            ("A", f"F(1, 1)[++({self.angle})A][+({self.angle})A]\
+                    [-({self.angle})A][--({self.angle})A]", 0.4),
+            ("A", f"F(1, 1)[-({self.angle})A]", 0.05),
+            ("A", f"F(1, 1)[+({self.angle})A]", 0.05),
+            ("F(x, y)", lambda x, y: f"F({(1.2+random.triangular(-0.5, 0.5, random.gauss(0, 1)))*x}, {1.4*y})"),
+            ("+(x)", lambda x: f"+({x + random.triangular(-10, 10, random.gauss(0, 2))})"),
+            ("-(x)", lambda x: f"-({x + random.triangular(-10, 10, random.gauss(0, 2))})"),
+        ]
+        self.rules_move = [
+            ("F", self.cmd_turtle_fd),
+            ("+", self.cmd_turtle_left),
+            ("-", self.cmd_turtle_right),
+            ('A', self.cmd_turtle_leaf),
+        ]
+
+    def cmd_turtle_fd(self, t, length, *args):
+        t.pencolor('#30221A')
+        t.pensize(args[1])
+        t.fd(length*args[0])
+
+    def cmd_turtle_left(self, t, angle, *args):
+        t.left(args[0])
+
+    def cmd_turtle_right(self, t, angle, *args):
+        t.right(args[0])
+
+    def cmd_turtle_leaf(self, t, length, *args):
+        if random.random() > self.leaf_slider.variable.get() / 10:
+            return
+        s = t.pensize()
+        t.pensize(5)
+        p = random.randint(0, 2)
+        match p:
+            case 0:
+                t.pencolor('#009900')
+            case 1:
+                t.pencolor('#667900')
+            case _:
+                t.pencolor('#20BB00')
+        t.fd(length//2)
+        t.pencolor("#000000")
+        t.pensize(s)
 
 
 if __name__ == "__main__":

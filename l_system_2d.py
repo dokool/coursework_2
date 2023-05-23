@@ -56,7 +56,7 @@ class LSystem2D:
         if len(self.rules_key) == 1:
             rule = self.rules_key[0]
         else:
-            self.get_random_rule(self.rules_key)
+            rule = self.get_random_rule(self.rules_key)
 
         if isinstance(rule[0], str):
             return rule[0].lower()

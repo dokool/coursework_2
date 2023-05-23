@@ -1,9 +1,17 @@
 import tkinter as tk
 import turtle
 import random
+from PIL import Image
+from itertools import cycle
 from l_system_2d import LSystem2D
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.colors as clr
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import (
+    FigureCanvasTkAgg,
+    NavigationToolbar2Tk
+)
 import customtkinter as ctk
 
 
@@ -50,7 +58,8 @@ class App(ctk.CTk):
             "Кольцо": DefaultLSystem2DClass(
                 self, 90, 0, [("F", "FF+F+F+F+F+F-F")],
                 "F+F+F+F", "350 / 3.2 ** self.n_iter",
-                "(330 + self.n_iter * 60, 15 * self.n_iter)", 4)
+                "(330 + self.n_iter * 60, 15 * self.n_iter)", 4),
+            "Множество Мандельброта": MandelbrotFractal(self),
         }
         self.option_menu = ctk.CTkOptionMenu(
             master=self,
@@ -324,6 +333,130 @@ class Tree(LSystem2DMainClass):
         t.fd(length//2)
         t.pencolor("#000000")
         t.pensize(s)
+
+
+class BSM2DMainClass(ctk.CTkFrame):
+
+    def __init__(self, master):
+        super().__init__(master)
+        self.columnconfigure(0, weight=6)
+        self.columnconfigure(1, weight=1)
+        self.rowconfigure(0, weight=1)
+        self.canvas_frame = ctk.CTkFrame(self, bg_color="#515151")
+        self.fig = Figure(figsize=(10, 6), dpi=95, facecolor="#515151")
+        self.canvas = FigureCanvasTkAgg(self.fig, self.canvas_frame)
+        # self.toolbar = NavigationToolbar2Tk(self.canvas, self.canvas_frame)
+        # self.toolbar.update()
+        self.canvas.get_tk_widget().pack(side=tk.LEFT, expand=True)
+        self.canvas_frame.pack(side=tk.LEFT, fill=ctk.BOTH, expand=True)
+        self.axes = self.fig.add_subplot()
+        self.fig.subplots_adjust(left=0, bottom=0, right=1, top=1)
+        self.axes.set_xticks([])
+        self.axes.set_yticks([])
+        self.config = ctk.CTkFrame(self)
+        self.move_left_button = ctk.CTkButton(self.config,
+                                              command=self.move_left, text="⬅")
+        self.move_right_button = ctk.CTkButton(self.config,
+                                              command=self.move_right, text="➡")
+        self.move_up_button = ctk.CTkButton(self.config,
+                                              command=self.move_up, text="⬆")
+        self.move_down_button = ctk.CTkButton(self.config,
+                                              command=self.move_down, text="⬇")
+        self.zoom_button = ctk.CTkButton(self.config,
+                                         command=self.zoom, text="🔍")
+        self.zoom_out_button = ctk.CTkButton(self.config,
+                                             command=self.zoom_out, text="🔍out")
+        self.move_left_button.pack()
+        self.move_right_button.pack()
+        self.move_up_button.pack()
+        self.move_down_button.pack()
+        self.zoom_button.pack()
+        self.zoom_out_button.pack()
+        self.button = DrawButton(self.config, self.draw)
+        self.button.pack(fill=ctk.BOTH, expand=True)
+        self.config.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
+
+    def draw(self):
+        raise NotImplementedError
+
+    def move_left(self):
+        move = (self.pmin - self.pmax) * 0.25
+        self.pmin += move
+        self.pmax += move
+        self.draw()
+
+    def move_right(self):
+        move = (self.pmin - self.pmax) * 0.25
+        self.pmin -= move
+        self.pmax -= move
+        self.draw()
+
+    def move_up(self):
+        move = (self.qmin - self.qmax) * 0.25
+        self.qmin += move
+        self.qmax += move
+        self.draw()
+
+    def move_down(self):
+        move = (self.qmin - self.qmax) * 0.25
+        self.qmin -= move
+        self.qmax -= move
+        self.draw()
+
+    def zoom(self):
+        width_c = (self.pmax - self.pmin) / 4
+        height_c = (self.qmax - self.qmin) / 4
+        self.pmin += width_c
+        self.pmax -= width_c
+        self.qmin += height_c
+        self.qmax -= height_c
+        self.draw()
+
+    def zoom_out(self):
+        width_c = (self.pmax - self.pmin) / 2
+        height_c = (self.qmax - self.qmin) / 2
+        self.pmin -= width_c
+        self.pmax += width_c
+        self.qmin -= height_c
+        self.qmax += height_c
+        self.draw()
+
+
+class MandelbrotFractal(BSM2DMainClass):
+
+    def __init__(self, master):
+        super().__init__(master)
+        self.pmin = -2.1
+        self.pmax = 0.6
+        self.qmin = -1.2
+        self.qmax = 1.2
+
+    def draw(self):
+        colorpoints = [(1 - (1 - q) ** 4, c) for q, c in zip(np.linspace(0, 1, 20),
+                                            cycle(['#ffff88', '#000000',
+                                                    '#ffaa00', ]))]
+        cmap = clr.LinearSegmentedColormap.from_list('mycmap',
+                                             colorpoints, N=2048)
+        image = self.mandelbrot(self.pmin, self.pmax, 512,
+                                self.qmin, self.qmax, 512)
+        # image = Image.effect_mandelbrot((512, 512), (self.pmin, self.qmin,
+        #                                              self.pmax, self.qmax), 200)
+        self.axes.imshow(image, cmap=cmap, interpolation='none')
+        self.canvas.draw()
+
+    def mandelbrot(self, pmin, pmax, ppoints, qmin, qmax, qpoints,
+                   max_iterations=100, infinity_border=10):
+        image = np.zeros((ppoints, qpoints))
+        p, q = np.mgrid[pmin:pmax:(ppoints*1j), qmin:qmax:(qpoints*1j)]
+        c = p + 1j*q
+        z = np.zeros_like(c)
+        n = 0
+        for k in range(max_iterations):
+            z = z**2 + c
+            mask = (np.abs(z) > infinity_border) & (image == 0)
+            image[mask] = k
+            z[mask] = np.nan
+        return -image.T
 
 
 if __name__ == "__main__":

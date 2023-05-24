@@ -336,6 +336,10 @@ class BSM2DMainClass(ctk.CTkFrame):
         self.columnconfigure(0, weight=6)
         self.columnconfigure(1, weight=1)
         self.rowconfigure(0, weight=1)
+        self.width, self.height = 920, 600
+        self.c = 0
+        self.screen_array = np.full((self.width, self.height, 3),
+                                    [0, 0, 0], dtype=np.uint8)
         self.canvas_frame = ctk.CTkLabel(self, bg_color="#515151", text='',
                                          width=920, height=600)
         self.canvas_frame.pack(fill=ctk.BOTH, side=tk.LEFT)
@@ -365,10 +369,13 @@ class BSM2DMainClass(ctk.CTkFrame):
         self.config.pack(fill=ctk.BOTH, side=tk.LEFT, expand=True)
 
     def redraw(self):
-        raise NotImplementedError
+        self.zoom = 2.2
+        self.dx = 0.0
+        self.dy = 0.0
+        self.draw()
 
     def draw(self):
-        raise NotImplementedError
+        self._draw_fractal()
 
     def move_left(self):
         self.dx += 0.4 * self.zoom
@@ -394,103 +401,63 @@ class BSM2DMainClass(ctk.CTkFrame):
         self.zoom /= 0.5
         self.draw()
 
-
-class MandelbrotFractal(BSM2DMainClass):
-
-    def __init__(self, master):
-        super().__init__(master)
-        self.zoom = 2.2
-        self.dx = 0.0
-        self.dy = 0.0
-
-    def redraw(self):
-        self.zoom = 2.2
-        self.dx = 0.0
-        self.dy = 0.0
-        self.draw()
-
-    def draw(self):
-        width, height = 920, 600
-        screen_array = np.full((width, height, 3), [0, 0, 0], dtype=np.uint8)
-        image = self.render(screen_array, width, height,
-                            self.zoom / height, self.dx, self.dy)
+    def _draw_fractal(self):
+        image = self.render(self.screen_array, self.width, self.height,
+                            self.zoom / self.height, self.dx, self.dy, self.c)
         img = Image.fromarray(image)
-        imgtk = ctk.CTkImage(dark_image=img, size=(width, height))
+        imgtk = ctk.CTkImage(dark_image=img, size=(self.width, self.height))
         self.canvas_frame.configure(image=imgtk)
 
     @staticmethod
     @numba.njit(fastmath=True, parallel=True)
-    def render(screen_array, width, height, zoom, dx, dy, max_iter=500):
-        offset = np.array([1.3 * width, height]) // 2
+    def render(screen_array, width, height, zoom,
+               dx, dy, C=None, max_iter=500):
+        if C:
+            bias = 1.0
+        else:
+            bias = 1.3
+        offset = np.array([bias * width, height]) // 2
         for x in numba.prange(width):
             for y in numba.prange(height):
-                c = (x - offset[0]) * zoom - dx +\
-                    1j * ((y - offset[1]) * zoom - dy)
-                z = 0
-                n_iter = 0
-                for i in numba.prange(max_iter):
-                    z = z ** 2 + c
-                    if z.real ** 2 + z.imag ** 2 > 4:
-                        break
-                    n_iter += 1
-                # col = int(255 * n_iter / max_iter)
-                if n_iter == max_iter-1:
-                    r = g = b = 0
+                if C:
+                    z = (x - offset[0]) * zoom - dx +\
+                        1j * ((y - offset[1]) * zoom - dy)
+                    c = C
                 else:
-                    r = (n_iter % 2) * 32 + 128
-                    g = (n_iter % 4) * 64
-                    b = (n_iter % 2) * 16 + 128
-                screen_array[x, y] = (r, g, b)
-        return screen_array.transpose((1, 0, 2))
-
-
-class JuliaFractal(BSM2DMainClass):
-
-    def __init__(self, master):
-        super().__init__(master)
-        self.zoom = 2.2
-        self.dx = 0.0
-        self.dy = 0.0
-
-    def redraw(self):
-        self.zoom = 2.2
-        self.dx = 0.0
-        self.dy = 0.0
-        self.draw()
-
-    def draw(self):
-        width, height = 920, 600
-        c = complex(-1)
-        screen_array = np.full((width, height, 3), [0, 0, 0], dtype=np.uint8)
-        image = self.render(screen_array, c, width, height,
-                            self.zoom / height, self.dx, self.dy)
-        img = Image.fromarray(image)
-        imgtk = ctk.CTkImage(dark_image=img, size=(width, height))
-        self.canvas_frame.configure(image=imgtk)
-
-    @staticmethod
-    @numba.njit(fastmath=True, parallel=True)
-    def render(screen_array, c, width, height, zoom, dx, dy, max_iter=500):
-        offset = np.array([width, height]) // 2
-        for x in numba.prange(width):
-            for y in numba.prange(height):
-                z = (x - offset[0]) * zoom - dx +\
-                     1j * ((y - offset[1]) * zoom - dy)
+                    c = (x - offset[0]) * zoom - dx +\
+                        1j * ((y - offset[1]) * zoom - dy)
+                    z = 0
                 n_iter = 0
                 for i in numba.prange(max_iter):
                     z = z ** 2 + c
                     if z.real ** 2 + z.imag ** 2 >= 4:
                         break
                     n_iter += 1
-                col = int(255 * n_iter / max_iter)
+                r = g = b = int(255 * n_iter / max_iter)
                 # if n_iter == max_iter-1:
                 #     r = g = b = 0
                 # else:
                 #     r = (n_iter % 2) * 32 + 128
                 #     g = (n_iter % 4) * 64
                 #     b = (n_iter % 2) * 16 + 128
-                screen_array[x, y] = (col, col, col)
+                screen_array[x, y] = (r, g, b)
         return screen_array.transpose((1, 0, 2))
+
+
+class MandelbrotFractal(BSM2DMainClass):
+
+    def __init__(self, master):
+        super().__init__(master)
+
+
+class JuliaFractal(BSM2DMainClass):
+
+    def __init__(self, master):
+        super().__init__(master)
+
+    def draw(self):
+        self.c = complex(-1)
+        self._draw_fractal()
 
 
 if __name__ == "__main__":

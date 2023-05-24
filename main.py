@@ -1,17 +1,12 @@
 import tkinter as tk
 import turtle
 import random
-from PIL import Image
 from itertools import cycle
 from l_system_2d import LSystem2D
+import numba
 import numpy as np
-import matplotlib.pyplot as plt
+from PIL import Image, ImageTk
 import matplotlib.colors as clr
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import (
-    FigureCanvasTkAgg,
-    NavigationToolbar2Tk
-)
 import customtkinter as ctk
 
 
@@ -342,83 +337,62 @@ class BSM2DMainClass(ctk.CTkFrame):
         self.columnconfigure(0, weight=6)
         self.columnconfigure(1, weight=1)
         self.rowconfigure(0, weight=1)
-        self.canvas_frame = ctk.CTkFrame(self, bg_color="#515151")
-        self.fig = Figure(figsize=(10, 6), dpi=95, facecolor="#515151")
-        self.canvas = FigureCanvasTkAgg(self.fig, self.canvas_frame)
-        # self.toolbar = NavigationToolbar2Tk(self.canvas, self.canvas_frame)
-        # self.toolbar.update()
-        self.canvas.get_tk_widget().pack(side=tk.LEFT, expand=True)
-        self.canvas_frame.pack(side=tk.LEFT, fill=ctk.BOTH, expand=True)
-        self.axes = self.fig.add_subplot()
-        self.fig.subplots_adjust(left=0, bottom=0, right=1, top=1)
-        self.axes.set_xticks([])
-        self.axes.set_yticks([])
+        self.canvas_frame = ctk.CTkLabel(self, bg_color="#515151", text='',
+                                         width=920, height=600)
+        self.canvas_frame.pack(fill=ctk.BOTH, side=tk.LEFT)
         self.config = ctk.CTkFrame(self)
         self.move_left_button = ctk.CTkButton(self.config,
                                               command=self.move_left, text="⬅")
         self.move_right_button = ctk.CTkButton(self.config,
-                                              command=self.move_right, text="➡")
+                                               command=self.move_right,
+                                               text="➡")
         self.move_up_button = ctk.CTkButton(self.config,
-                                              command=self.move_up, text="⬆")
+                                            command=self.move_up, text="⬆")
         self.move_down_button = ctk.CTkButton(self.config,
                                               command=self.move_down, text="⬇")
         self.zoom_button = ctk.CTkButton(self.config,
-                                         command=self.zoom, text="🔍")
+                                         command=self.zoom_in, text="🔍")
         self.zoom_out_button = ctk.CTkButton(self.config,
-                                             command=self.zoom_out, text="🔍out")
+                                             command=self.zoom_out,
+                                             text="🔍out")
         self.move_left_button.pack()
         self.move_right_button.pack()
         self.move_up_button.pack()
         self.move_down_button.pack()
         self.zoom_button.pack()
         self.zoom_out_button.pack()
-        self.button = DrawButton(self.config, self.draw)
+        self.button = DrawButton(self.config, self.redraw)
         self.button.pack(fill=ctk.BOTH, expand=True)
-        self.config.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
+        self.config.pack(fill=ctk.BOTH, side=tk.LEFT, expand=True)
+
+    def redraw(self):
+        raise NotImplementedError
 
     def draw(self):
         raise NotImplementedError
 
     def move_left(self):
-        move = (self.pmin - self.pmax) * 0.25
-        self.pmin += move
-        self.pmax += move
+        self.dx += 0.4 * self.zoom
         self.draw()
 
     def move_right(self):
-        move = (self.pmin - self.pmax) * 0.25
-        self.pmin -= move
-        self.pmax -= move
+        self.dx -= 0.4 * self.zoom
         self.draw()
 
     def move_up(self):
-        move = (self.qmin - self.qmax) * 0.25
-        self.qmin += move
-        self.qmax += move
+        self.dy += 0.4 * self.zoom
         self.draw()
 
     def move_down(self):
-        move = (self.qmin - self.qmax) * 0.25
-        self.qmin -= move
-        self.qmax -= move
+        self.dy -= 0.4 * self.zoom
         self.draw()
 
-    def zoom(self):
-        width_c = (self.pmax - self.pmin) / 4
-        height_c = (self.qmax - self.qmin) / 4
-        self.pmin += width_c
-        self.pmax -= width_c
-        self.qmin += height_c
-        self.qmax -= height_c
+    def zoom_in(self):
+        self.zoom *= 0.5
         self.draw()
 
     def zoom_out(self):
-        width_c = (self.pmax - self.pmin) / 2
-        height_c = (self.qmax - self.qmin) / 2
-        self.pmin -= width_c
-        self.pmax += width_c
-        self.qmin -= height_c
-        self.qmax += height_c
+        self.zoom /= 0.5
         self.draw()
 
 
@@ -426,37 +400,59 @@ class MandelbrotFractal(BSM2DMainClass):
 
     def __init__(self, master):
         super().__init__(master)
-        self.pmin = -2.1
-        self.pmax = 0.6
-        self.qmin = -1.2
-        self.qmax = 1.2
+        self.zoom = 2.2
+        self.dx = 0.0
+        self.dy = 0.0
+
+    def redraw(self):
+        self.zoom = 2.2
+        self.dx = 0.0
+        self.dy = 0.0
+        self.draw()
 
     def draw(self):
-        colorpoints = [(1 - (1 - q) ** 4, c) for q, c in zip(np.linspace(0, 1, 20),
-                                            cycle(['#ffff88', '#000000',
-                                                    '#ffaa00', ]))]
-        cmap = clr.LinearSegmentedColormap.from_list('mycmap',
-                                             colorpoints, N=2048)
-        image = self.mandelbrot(self.pmin, self.pmax, 512,
-                                self.qmin, self.qmax, 512)
-        # image = Image.effect_mandelbrot((512, 512), (self.pmin, self.qmin,
-        #                                              self.pmax, self.qmax), 200)
-        self.axes.imshow(image, cmap=cmap, interpolation='none')
-        self.canvas.draw()
+        width, height = 920, 600
+        # screen_array = np.full((width, height, 3), [0, 0, 0], dtype=np.uint8)
+        # image = self.render(screen_array, width, height,
+        #                     self.zoom / height, self.dx, self.dy)
+        image = self.mandelbrot(-2.5, 1.5, 1000, -2, 2, 1000)
+        img = Image.fromarray(image)
+        imgtk = ctk.CTkImage(dark_image=img, size=(width, height))
+        self.canvas_frame.configure(image=imgtk)
 
-    def mandelbrot(self, pmin, pmax, ppoints, qmin, qmax, qpoints,
+    @staticmethod
+    @numba.njit(fastmath=True, parallel=True)
+    def mandelbrot(pmin, pmax, ppoints, qmin, qmax, qpoints,
                    max_iterations=100, infinity_border=10):
         image = np.zeros((ppoints, qpoints))
         p, q = np.mgrid[pmin:pmax:(ppoints*1j), qmin:qmax:(qpoints*1j)]
         c = p + 1j*q
         z = np.zeros_like(c)
-        n = 0
         for k in range(max_iterations):
             z = z**2 + c
             mask = (np.abs(z) > infinity_border) & (image == 0)
             image[mask] = k
             z[mask] = np.nan
         return -image.T
+
+    @staticmethod
+    @numba.njit(fastmath=True, parallel=True)
+    def render(screen_array, width, height, zoom, dx, dy, max_iter=100):
+        offset = np.array([1.3 * width, height]) // 2
+        for x in numba.prange(width):
+            for y in numba.prange(height):
+                c = (x - offset[0]) * zoom - dx +\
+                    1j * ((y - offset[1]) * zoom - dy)
+                z = 0
+                n_iter = 0
+                for i in numba.prange(max_iter):
+                    z = z ** 2 + c
+                    if z.real ** 2 + z.imag ** 2 > 4:
+                        break
+                    n_iter += 1
+                col = int(255 * n_iter / max_iter)
+                screen_array[x, y] = (col, col, col)
+        return screen_array.transpose((1, 0, 2))
 
 
 if __name__ == "__main__":

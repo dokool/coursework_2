@@ -412,10 +412,9 @@ class MandelbrotFractal(BSM2DMainClass):
 
     def draw(self):
         width, height = 920, 600
-        # screen_array = np.full((width, height, 3), [0, 0, 0], dtype=np.uint8)
-        # image = self.render(screen_array, width, height,
-        #                     self.zoom / height, self.dx, self.dy)
-        image = self.mandelbrot(-2.5, 1.5, 1000, -2, 2, 1000)
+        screen_array = np.full((width, height, 3), [0, 0, 0], dtype=np.uint8)
+        image = self.render(screen_array, width, height,
+                            self.zoom / height, self.dx, self.dy)
         img = Image.fromarray(image)
         imgtk = ctk.CTkImage(dark_image=img, size=(width, height))
         self.canvas_frame.configure(image=imgtk)
@@ -437,7 +436,7 @@ class MandelbrotFractal(BSM2DMainClass):
 
     @staticmethod
     @numba.njit(fastmath=True, parallel=True)
-    def render(screen_array, width, height, zoom, dx, dy, max_iter=100):
+    def render(screen_array, width, height, zoom, dx, dy, max_iter=500):
         offset = np.array([1.3 * width, height]) // 2
         for x in numba.prange(width):
             for y in numba.prange(height):
@@ -450,8 +449,14 @@ class MandelbrotFractal(BSM2DMainClass):
                     if z.real ** 2 + z.imag ** 2 > 4:
                         break
                     n_iter += 1
-                col = int(255 * n_iter / max_iter)
-                screen_array[x, y] = (col, col, col)
+                # col = int(255 * n_iter / max_iter)
+                if n_iter == max_iter-1:
+                    r = g = b = 0
+                else:
+                    r = (n_iter % 2) * 32 + 128
+                    g = (n_iter % 4) * 64
+                    b = (n_iter % 2) * 16 + 128
+                screen_array[x, y] = (r, g, b)
         return screen_array.transpose((1, 0, 2))
 
 

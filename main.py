@@ -1,12 +1,10 @@
 import tkinter as tk
 import turtle
 import random
-from itertools import cycle
 from l_system_2d import LSystem2D
 import numba
 import numpy as np
-from PIL import Image, ImageTk
-import matplotlib.colors as clr
+from PIL import Image
 import customtkinter as ctk
 
 
@@ -55,6 +53,7 @@ class App(ctk.CTk):
                 "F+F+F+F", "350 / 3.2 ** self.n_iter",
                 "(330 + self.n_iter * 60, 15 * self.n_iter)", 4),
             "Множество Мандельброта": MandelbrotFractal(self),
+            "Множество Жюлиа": JuliaFractal(self),
         }
         self.option_menu = ctk.CTkOptionMenu(
             master=self,
@@ -421,21 +420,6 @@ class MandelbrotFractal(BSM2DMainClass):
 
     @staticmethod
     @numba.njit(fastmath=True, parallel=True)
-    def mandelbrot(pmin, pmax, ppoints, qmin, qmax, qpoints,
-                   max_iterations=100, infinity_border=10):
-        image = np.zeros((ppoints, qpoints))
-        p, q = np.mgrid[pmin:pmax:(ppoints*1j), qmin:qmax:(qpoints*1j)]
-        c = p + 1j*q
-        z = np.zeros_like(c)
-        for k in range(max_iterations):
-            z = z**2 + c
-            mask = (np.abs(z) > infinity_border) & (image == 0)
-            image[mask] = k
-            z[mask] = np.nan
-        return -image.T
-
-    @staticmethod
-    @numba.njit(fastmath=True, parallel=True)
     def render(screen_array, width, height, zoom, dx, dy, max_iter=500):
         offset = np.array([1.3 * width, height]) // 2
         for x in numba.prange(width):
@@ -457,6 +441,55 @@ class MandelbrotFractal(BSM2DMainClass):
                     g = (n_iter % 4) * 64
                     b = (n_iter % 2) * 16 + 128
                 screen_array[x, y] = (r, g, b)
+        return screen_array.transpose((1, 0, 2))
+
+
+class JuliaFractal(BSM2DMainClass):
+
+    def __init__(self, master):
+        super().__init__(master)
+        self.zoom = 2.2
+        self.dx = 0.0
+        self.dy = 0.0
+
+    def redraw(self):
+        self.zoom = 2.2
+        self.dx = 0.0
+        self.dy = 0.0
+        self.draw()
+
+    def draw(self):
+        width, height = 920, 600
+        c = complex(-1)
+        screen_array = np.full((width, height, 3), [0, 0, 0], dtype=np.uint8)
+        image = self.render(screen_array, c, width, height,
+                            self.zoom / height, self.dx, self.dy)
+        img = Image.fromarray(image)
+        imgtk = ctk.CTkImage(dark_image=img, size=(width, height))
+        self.canvas_frame.configure(image=imgtk)
+
+    @staticmethod
+    @numba.njit(fastmath=True, parallel=True)
+    def render(screen_array, c, width, height, zoom, dx, dy, max_iter=500):
+        offset = np.array([width, height]) // 2
+        for x in numba.prange(width):
+            for y in numba.prange(height):
+                z = (x - offset[0]) * zoom - dx +\
+                     1j * ((y - offset[1]) * zoom - dy)
+                n_iter = 0
+                for i in numba.prange(max_iter):
+                    z = z ** 2 + c
+                    if z.real ** 2 + z.imag ** 2 >= 4:
+                        break
+                    n_iter += 1
+                col = int(255 * n_iter / max_iter)
+                # if n_iter == max_iter-1:
+                #     r = g = b = 0
+                # else:
+                #     r = (n_iter % 2) * 32 + 128
+                #     g = (n_iter % 4) * 64
+                #     b = (n_iter % 2) * 16 + 128
+                screen_array[x, y] = (col, col, col)
         return screen_array.transpose((1, 0, 2))
 
 

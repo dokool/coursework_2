@@ -341,32 +341,45 @@ class BSM2DMainClass(ctk.CTkFrame):
         self.screen_array = np.full((self.width, self.height, 3),
                                     [0, 0, 0], dtype=np.uint8)
         self.canvas_frame = ctk.CTkLabel(self, bg_color="#515151", text='',
-                                         width=920, height=600)
-        self.canvas_frame.pack(fill=ctk.BOTH, side=tk.LEFT)
-        self.config = ctk.CTkFrame(self)
-        self.move_left_button = ctk.CTkButton(self.config,
-                                              command=self.move_left, text="⬅")
-        self.move_right_button = ctk.CTkButton(self.config,
+                                         width=self.width, height=self.height)
+        self.config = ctk.CTkFrame(self, bg_color="#434343")
+        self.move_pad = ctk.CTkFrame(self.config)
+        self.move_left_button = ctk.CTkButton(self.move_pad,
+                                              command=self.move_left, text="⬅",
+                                              width=93,
+                                              font=ctk.CTkFont(size=20))
+        self.move_right_button = ctk.CTkButton(self.move_pad,
                                                command=self.move_right,
-                                               text="➡")
-        self.move_up_button = ctk.CTkButton(self.config,
-                                            command=self.move_up, text="⬆")
-        self.move_down_button = ctk.CTkButton(self.config,
-                                              command=self.move_down, text="⬇")
+                                               text="➡",
+                                               width=93,
+                                               font=ctk.CTkFont(size=20))
+        self.move_up_button = ctk.CTkButton(self.move_pad,
+                                            command=self.move_up, text="⬆",
+                                            width=93,
+                                            font=ctk.CTkFont(size=20))
+        self.move_down_button = ctk.CTkButton(self.move_pad,
+                                              command=self.move_down, text="⬇",
+                                              width=93,
+                                              font=ctk.CTkFont(size=20))
         self.zoom_button = ctk.CTkButton(self.config,
-                                         command=self.zoom_in, text="🔍")
+                                         command=self.zoom_in,
+                                         text="Приблизить",
+                                         width=140,
+                                         font=ctk.CTkFont(size=20))
         self.zoom_out_button = ctk.CTkButton(self.config,
                                              command=self.zoom_out,
-                                             text="🔍out")
-        self.move_left_button.pack()
-        self.move_right_button.pack()
-        self.move_up_button.pack()
-        self.move_down_button.pack()
-        self.zoom_button.pack()
-        self.zoom_out_button.pack()
+                                             text="Отдалить",
+                                             width=140,
+                                             font=ctk.CTkFont(size=20))
         self.button = DrawButton(self.config, self.redraw)
-        self.button.pack(fill=ctk.BOTH, expand=True)
-        self.config.pack(fill=ctk.BOTH, side=tk.LEFT, expand=True)
+        self.canvas_frame.pack(fill=ctk.BOTH, side=tk.LEFT)
+        self.move_up_button.grid(row=0, column=1, sticky='nsew')
+        self.move_left_button.grid(row=1, column=0, sticky='nsew')
+        self.move_right_button.grid(row=1, column=2, sticky='nsew')
+        self.move_down_button.grid(row=2, column=1, sticky='nsew')
+        self.move_pad.pack(ipady=5, fill=ctk.BOTH, side=ctk.TOP)
+        self.zoom_button.pack(pady=5)
+        self.zoom_out_button.pack(pady=5)
 
     def redraw(self):
         self.zoom = 2.2
@@ -412,10 +425,7 @@ class BSM2DMainClass(ctk.CTkFrame):
     @numba.njit(fastmath=True, parallel=True)
     def render(screen_array, width, height, zoom,
                dx, dy, C=None, max_iter=500):
-        if C:
-            bias = 1.0
-        else:
-            bias = 1.3
+        bias = 1.0 if C else 1.3
         offset = np.array([bias * width, height]) // 2
         for x in numba.prange(width):
             for y in numba.prange(height):
@@ -448,15 +458,44 @@ class MandelbrotFractal(BSM2DMainClass):
 
     def __init__(self, master):
         super().__init__(master)
+        self.button.pack(fill=ctk.BOTH, expand=True, pady=5)
+        self.config.pack(fill=ctk.BOTH, side=tk.LEFT, expand=True)
 
 
 class JuliaFractal(BSM2DMainClass):
 
     def __init__(self, master):
         super().__init__(master)
+        self.real_c_var = ctk.DoubleVar(self.config, 0.0)
+        self.imag_c_var = ctk.DoubleVar(self.config, 0.0)
+        self.real_c_slider = ctk.CTkSlider(
+            self.config,
+            from_=-2, to=2,
+            number_of_steps=4000,
+            command=self.slider_event,
+            variable=self.real_c_var,
+        )
+        self.imag_c_slider = ctk.CTkSlider(
+            self.config,
+            from_=-2, to=2,
+            number_of_steps=4000,
+            command=self.slider_event,
+            variable=self.imag_c_var,
+        )
+        self.real_c_slider.pack()
+        self.imag_c_slider.pack()
+        self.button.pack(fill=ctk.BOTH, expand=True, pady=5)
+        self.config.pack(fill=ctk.BOTH, side=tk.LEFT, expand=True)
+
+    def slider_event(self, event):
+        self.draw()
 
     def draw(self):
-        self.c = complex(-1)
+        self.c = complex(
+            self.real_c_var.get(),
+            self.imag_c_var.get()
+        )
+        print(self.c)
         self._draw_fractal()
 
 

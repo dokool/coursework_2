@@ -52,6 +52,28 @@ class App(ctk.CTk):
                 self, 90, 0, [("F", "FF+F+F+F+F+F-F")],
                 "F+F+F+F", "350 / 3.2 ** self.n_iter",
                 "(330 + self.n_iter * 60, 15 * self.n_iter)", 4),
+            "Фрактал Вичека": DefaultLSystem2DClass(
+                self, 90, 90, [("F", "F-F+F+F-F")],
+                "F-F-F-F", "480 / (3 ** self.n_iter)", "(225, 10)"),
+            "Кривая Леви": DefaultLSystem2DClass(
+                self, 45, 0, [("F", "+F--F+")], "F",
+                "650 / (1.5 ** self.n_iter)",
+                "(130 + 15 * self.n_iter, 60 + 5 * self.n_iter)",
+                iterations=14),
+            "Кривая Серпинского": DefaultLSystem2DClass(
+                self, 90, 0, [("X", "XF-F+F-XF+F+XF-F+F-X")],
+                "F+XF+F+XF", "[100, 38.5, 17.26, 8.22, 4.01][self.n_iter-1]",
+                "(425, 10)"),
+            "Кривая Пеано-Госпера": DefaultLSystem2DClass(
+                self, 60, 0,
+                [("X", "X+YF++YF-FX--FXFX-YF+"),
+                 ("Y", "-FX+YFYF++YF+FX--FX-Y")],
+                "FX", "600 / (2.9 ** self.n_iter)",
+                "(300 + 30 * self.n_iter, 10)",
+                iterations=4),
+            "Пентаплекс": DefaultLSystem2DClass(
+                self, 36, 0, [("F", "F++F++F+++++F-F++F")],
+                "F++F++F++F++F", "325 / (2.6 ** self.n_iter)", "(320, 10)"),
             "Множество Мандельброта": MandelbrotFractal(self),
             "Множество Жюлиа": JuliaFractal(self),
         }

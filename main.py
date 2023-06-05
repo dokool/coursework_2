@@ -393,6 +393,7 @@ class BSM2DMainClass(ctk.CTkFrame):
                                              text="Отдалить",
                                              width=140,
                                              font=ctk.CTkFont(size=20))
+        self.color_switch = Switch(self.config, 'Цвет')
         self.button = DrawButton(self.config, self.redraw)
         self.canvas_frame.pack(fill=ctk.BOTH, side=tk.LEFT)
         self.move_up_button.grid(row=0, column=1, sticky='nsew')
@@ -402,6 +403,7 @@ class BSM2DMainClass(ctk.CTkFrame):
         self.move_pad.pack(ipady=5, fill=ctk.BOTH, side=ctk.TOP)
         self.zoom_button.pack(pady=5)
         self.zoom_out_button.pack(pady=5)
+        self.color_switch.pack(pady=5)
 
     def redraw(self):
         self.zoom = 2.2
@@ -438,7 +440,8 @@ class BSM2DMainClass(ctk.CTkFrame):
 
     def _draw_fractal(self):
         image = self.render(self.screen_array, self.width, self.height,
-                            self.zoom / self.height, self.dx, self.dy, self.c)
+                            self.zoom / self.height, self.dx, self.dy, self.c,
+                            color=self.color_switch.variable.get())
         img = Image.fromarray(image)
         imgtk = ctk.CTkImage(dark_image=img, size=(self.width, self.height))
         self.canvas_frame.configure(image=imgtk)
@@ -446,7 +449,7 @@ class BSM2DMainClass(ctk.CTkFrame):
     @staticmethod
     @numba.njit(fastmath=True, parallel=True)
     def render(screen_array, width, height, zoom,
-               dx, dy, C=None, max_iter=500):
+               dx, dy, C=None, max_iter=500, color=False):
         bias = 1.0 if C else 1.3
         offset = np.array([bias * width, height]) // 2
         for x in numba.prange(width):
@@ -465,13 +468,15 @@ class BSM2DMainClass(ctk.CTkFrame):
                     if z.real ** 2 + z.imag ** 2 >= 4:
                         break
                     n_iter += 1
-                r = g = b = int(255 * n_iter / max_iter)
-                # if n_iter == max_iter-1:
-                #     r = g = b = 0
-                # else:
-                #     r = (n_iter % 2) * 32 + 128
-                #     g = (n_iter % 4) * 64
-                #     b = (n_iter % 2) * 16 + 128
+                if color:
+                    if n_iter == max_iter-1:
+                        r = g = b = 0
+                    else:
+                        r = (n_iter % 2) * 32 + 128
+                        g = (n_iter % 4) * 64
+                        b = (n_iter % 2) * 16 + 128
+                else:
+                    r = g = b = int(255 * n_iter / max_iter)
                 screen_array[x, y] = (r, g, b)
         return screen_array.transpose((1, 0, 2))
 
@@ -484,26 +489,43 @@ class MandelbrotFractal(BSM2DMainClass):
         self.config.pack(fill=ctk.BOTH, side=tk.LEFT, expand=True)
 
 
+class JuliaSlider(ctk.CTkFrame):
+
+    def __init__(self, master, text, command, start=-2, end=2):
+        super().__init__(master)
+        self.columnconfigure(0, weight=4)
+        self.columnconfigure(1, weight=1)
+        self.variable = ctk.DoubleVar(self, 0)
+        self.iterations_label = ctk.CTkLabel(
+            self,
+            text=text,
+            font=ctk.CTkFont(size=20)
+        ).grid(column=0, row=0, columnspan=2, pady=20)
+        self.slider = ctk.CTkSlider(
+            self,
+            from_=start,
+            to=end,
+            variable=self.variable,
+            number_of_steps=400,
+            command=command
+        ).grid(column=0, row=1, pady=20, padx=20)
+        self.label = ctk.CTkEntry(
+            self,
+            textvariable=self.variable,
+            font=ctk.CTkFont(size=20),
+            state=ctk.DISABLED,
+            width=65
+        ).grid(column=1, row=1)
+
+
 class JuliaFractal(BSM2DMainClass):
 
     def __init__(self, master):
         super().__init__(master)
-        self.real_c_var = ctk.DoubleVar(self.config, 0.0)
-        self.imag_c_var = ctk.DoubleVar(self.config, 0.0)
-        self.real_c_slider = ctk.CTkSlider(
-            self.config,
-            from_=-2, to=2,
-            number_of_steps=4000,
-            command=self.slider_event,
-            variable=self.real_c_var,
-        )
-        self.imag_c_slider = ctk.CTkSlider(
-            self.config,
-            from_=-2, to=2,
-            number_of_steps=4000,
-            command=self.slider_event,
-            variable=self.imag_c_var,
-        )
+        self.real_c_slider = JuliaSlider(
+            self.config, 'Реальная', self.slider_event)
+        self.imag_c_slider = JuliaSlider(
+            self.config, 'Мнимая', self.slider_event)
         self.real_c_slider.pack()
         self.imag_c_slider.pack()
         self.button.pack(fill=ctk.BOTH, expand=True, pady=5)
@@ -514,10 +536,9 @@ class JuliaFractal(BSM2DMainClass):
 
     def draw(self):
         self.c = complex(
-            self.real_c_var.get(),
-            self.imag_c_var.get()
+            self.real_c_slider.variable.get(),
+            self.imag_c_slider.variable.get(),
         )
-        print(self.c)
         self._draw_fractal()
 
 

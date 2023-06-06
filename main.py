@@ -4,6 +4,9 @@ import random
 import re
 import numba
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
 from PIL import Image
 import customtkinter as ctk
 
@@ -74,6 +77,13 @@ class App(ctk.CTk):
             "Пентаплекс": DefaultLSystem2DClass(
                 self, 36, 0, [("F", "F++F++F+++++F-F++F")],
                 "F++F++F++F++F", "325 / (2.6 ** self.n_iter)", "(320, 10)"),
+            "Треугольник Серпинского (СИФ)": DefaultIFSClass(
+                self,
+                C=[
+                    (0.5, 0, 0, 0.5, 0, 0),
+                    (0.5, 0, 0, 0.5, 0.5, 0),
+                    (0.5, 0, 0, 0.5, 0.25, 0.433),
+                ], end=7, scale=3),
             "Множество Мандельброта": MandelbrotFractal(self),
             "Множество Жюлиа": JuliaFractal(self),
         }
@@ -668,6 +678,74 @@ class JuliaFractal(BSM2DMainClass):
             self.imag_c_slider.variable.get(),
         )
         self._draw_fractal()
+
+
+class IFS:
+
+    def __init__(self, coeffs):
+        self.coeffs = coeffs
+        self.data = np.array([[0, 0]])
+        self.T = self.create_funcs()
+        # print(self.data)
+
+    def create_funcs(self):
+        T = []
+        for c in self.coeffs:
+            t = np.array(c[:4]).reshape(2, 2)
+            h = np.array(c[4:])
+            T.append((t, h))
+
+        return T
+
+    def create_attractor(self, n_iter):
+        for n in range(n_iter):
+            for point in self.data:
+                for t in self.T:
+                    self.data = np.vstack((
+                        self.data,
+                        point.dot(t[0]) + t[1],
+                    ))
+        self.data = self.data.T
+
+
+class DefaultIFSClass(ctk.CTkFrame):
+
+    def __init__(self, master, C, end, color='k', marker='s', scale=1):
+        super().__init__(master)
+        self.color = 'k'
+        self.C = C
+        self.scale = scale
+        self.marker = marker
+        self.columnconfigure(0, weight=6)
+        self.columnconfigure(1, weight=1)
+        self.rowconfigure(0, weight=1)
+        self.fig = Figure(figsize=(9, 6), dpi=100)
+        self.ax = self.fig.add_subplot(111)
+        self.canvas = FigureCanvasTkAgg(self.fig, self)
+        self.canvas.get_tk_widget().pack(
+            expand=True, fill=tk.BOTH, side=tk.LEFT)
+        self.config = ctk.CTkFrame(self)
+        self.iterations = SliderFrame(self.config, start=1, end=end)
+        self.button = DrawButton(self.config, self.draw)
+        self.ax.get_xaxis().set_visible(False)
+        self.ax.get_yaxis().set_visible(False)
+        self.iterations.pack(fill=ctk.BOTH, expand=True, pady=5)
+        self.button.pack(fill=ctk.BOTH, expand=True, pady=5)
+        self.config.pack()
+
+    def draw(self):
+        self.ax.clear()
+        n_iter = self.iterations.variable.get()
+        ifs = IFS(self.C)
+        ifs.create_attractor(n_iter)
+        self.ax.scatter(
+            ifs.data[0], ifs.data[1],
+            s=10_000 / (self.scale ** n_iter),
+            edgecolor=self.color, c=self.color,
+            marker=self.marker)
+        # self.ax.set_xlim([-0.1, 1])
+        # self.ax.set_ylim([-0.1, 1])
+        self.canvas.draw()
 
 
 if __name__ == "__main__":

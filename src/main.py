@@ -1,15 +1,12 @@
+import os
 import tkinter as tk
 import turtle
 import random
 import re
 import numba
 import numpy as np
-import matplotlib.pyplot as plt
 from stl import mesh
-import numpy as np
-# from myplot import plot_mesh
 from mpl_toolkits import mplot3d
-import os
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from PIL import Image
@@ -704,13 +701,12 @@ class IFS:
         self.coeffs = coeffs
         self.data = np.array([[0, 0]])
         self.T = self.create_funcs()
-        # print(self.data)
 
     def create_funcs(self):
         T = []
         for c in self.coeffs:
             t = np.array(c[:4]).reshape(2, 2)
-            h = np.array(c[4:])
+            h = np.array(c[4:7])
             T.append((t, h))
 
         return T
@@ -724,6 +720,44 @@ class IFS:
                         point.dot(t[0]) + t[1],
                     ))
         self.data = self.data.T
+
+
+class Random_IFS:
+
+    def __init__(self, coeffs):
+        self.coeffs = coeffs
+        self.data = np.array([[0, 0]])
+        self.T = self.create_funcs()
+
+    def create_funcs(self):
+        T = []
+        self.weights = []
+        for c in self.coeffs:
+            t = np.array(c[:4]).reshape(2, 2)
+            h = np.array(c[4:6])
+            w = c[-1]
+            w *= 100
+            w = int(w)
+            T.append((t, h))
+            self.weights.append(w)
+
+        return T
+
+    def create_attractor(self, n_iter):
+        current = 0
+        for n in range(n_iter):
+            point = self.data[current]
+            t = random.choices(self.T, weights=self.weights, k=1)
+            self.data = np.vstack((
+                self.data,
+                t[0][0].dot(point) + t[0][1],
+            ))
+            current += 1
+        self.data = self.data.T
+
+
+
+
 
 
 class DefaultIFSClass(ctk.CTkFrame):
@@ -790,7 +824,7 @@ class Sponge(ctk.CTkFrame):
     def draw(self):
         self.axes.clear()
         n_iter = self.iterations.variable.get()
-        mesh = Sponge.render_and_show(n_iter)
+        mesh = Sponge.render_and_read(n_iter)
         self.axes.add_collection3d(
             mplot3d.art3d.Poly3DCollection(mesh.vectors,
                                            edgecolor="black"))
@@ -871,24 +905,22 @@ class Sponge(ctk.CTkFrame):
                        Sponge.voxel_in_hole(holes, rx, rz):
                         continue
                     if sponge is None:
-                        sponge = Sponge.create_voxel(side, x/(3**depth),
-                                              y/(3**depth), z/(3**depth))
+                        sponge = Sponge.create_voxel(
+                            side, x/(3**depth), y/(3**depth), z/(3**depth))
                     else:
-                        new_voxel = Sponge.create_voxel(side, x/(3**depth),
-                                                y/(3**depth), z/(3**depth))
+                        new_voxel = Sponge.create_voxel(
+                            side, x/(3**depth), y/(3**depth), z/(3**depth))
                         sponge = mesh.Mesh(np.concatenate([sponge.data,
                                                            new_voxel.data]))
 
         sponge.save(f'./prerenders/sponge/sponge_{depth}.stl')
 
-    def render_and_show(depth):
+    def render_and_read(depth):
         if not os.path.exists(f'./prerenders/sponge/sponge_{depth}.stl'):
             Sponge.render(depth)
         sponge = mesh.Mesh.from_file(
             f'./prerenders/sponge/sponge_{depth}.stl')
         return sponge
-        # ax = plot_mesh(sponge)
-        # return ax
 
 
 if __name__ == "__main__":

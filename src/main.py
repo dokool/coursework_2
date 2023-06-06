@@ -23,7 +23,7 @@ class App(ctk.CTk):
 
         self.title("Фракталы")
         self.geometry("1200x600")
-        self.resizable(True, True)
+        self.resizable(False, False)
 
         self.mainframe = ctk.CTkFrame(self)
         self.frames = {
@@ -98,6 +98,30 @@ class App(ctk.CTk):
                     (0.33, 0, 0, 0.33, 0.66, 0.33),
                     (0.33, 0, 0, 0.33, 0.66, 0.66),
                     ], end=5, scale=5),
+            "Папоротник Барнсли (РСИФ)": DefaultRandomIFSClass(
+                self,
+                C=[
+                    (0, 0, 0, 0.16, 0, 0, 0.01),
+                    (0.85, 0.04, -0.04, 0.85, 0, 1.6, 0.85),
+                    (0.2, -0.26, 0.23, 0.22, 0, 1.6, 0.07),
+                    (-0.15, 0.28, 0.26, 0.24, 0, 0.44, 0.07),
+                    ], end=90, color='g'),
+            "Решетка (РСИФ)": DefaultRandomIFSClass(
+                self,
+                C=[
+                    (0.3, -0.3, 0.3, 0.3, 1, 1, 0.25),
+                    (0.3, -0.3, 0.3, 0.3, 1, -1, 0.25),
+                    (0.3, -0.3, 0.3, 0.3, -1, 1, 0.25),
+                    (0.3, -0.3, 0.3, 0.3, -1, -1, 0.25),
+                    ], end=90),
+            "Снежинка (РСИФ)": DefaultRandomIFSClass(
+                self,
+                C=[
+                    (0.255, 0, 0, 0.255, 0.3726, 0.6714, 0.25),
+                    (0.255, 0, 0, 0.255, 0.1146, 0.2232, 0.25),
+                    (0.255, 0, 0, 0.255, 0.6306, 0.2232, 0.25),
+                    (0.37, -0.642, 0.642, 0.37, 0.6356, -0.0061, 0.82),
+                    ], end=90),
             "Множество Мандельброта": MandelbrotFractal(self),
             "Множество Жюлиа": JuliaFractal(self),
             "Губка Менгера": Sponge(self),
@@ -756,8 +780,43 @@ class Random_IFS:
         self.data = self.data.T
 
 
+class DefaultRandomIFSClass(ctk.CTkFrame):
 
+    def __init__(self, master, C, end, color='k', marker='s'):
+        super().__init__(master)
+        self.color = color
+        self.C = C
+        self.marker = marker
+        self.columnconfigure(0, weight=6)
+        self.columnconfigure(1, weight=1)
+        self.rowconfigure(0, weight=1)
+        self.fig = Figure(figsize=(9, 6), dpi=100)
+        self.ax = self.fig.add_subplot(111)
+        self.canvas = FigureCanvasTkAgg(self.fig, self)
+        self.canvas.get_tk_widget().pack(
+            expand=True, fill=tk.BOTH, side=tk.LEFT)
+        self.config = ctk.CTkFrame(self)
+        self.iterations = SliderFrame(self.config, start=1, end=end)
+        self.button = DrawButton(self.config, self.draw)
+        self.ax.get_xaxis().set_visible(False)
+        self.ax.get_yaxis().set_visible(False)
+        self.iterations.pack(fill=ctk.BOTH, expand=True, pady=5)
+        self.button.pack(fill=ctk.BOTH, expand=True, pady=5)
+        self.config.pack()
 
+    def draw(self):
+        self.ax.clear()
+        n_iter = self.iterations.variable.get()
+        ifs = Random_IFS(self.C)
+        ifs.create_attractor(n_iter * 1000)
+        self.ax.scatter(
+            ifs.data[0], ifs.data[1],
+            s=1,
+            linewidth=0, c=self.color,
+            marker=self.marker)
+        # self.ax.set_xlim([-0.1, 1])
+        # self.ax.set_ylim([-0.1, 1])
+        self.canvas.draw()
 
 
 class DefaultIFSClass(ctk.CTkFrame):
